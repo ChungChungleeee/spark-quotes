@@ -88,9 +88,15 @@ button:focus-visible {
 
 .meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 18px;
   margin-top: 36px;
   font-size: 13px;
   color: #6b6b6b;
   font-variant-numeric: tabular-nums;
+}
+
+.source {
+  margin-left: auto;
+  color: #8a8a8a;
 }

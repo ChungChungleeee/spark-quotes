@@ -24,13 +24,15 @@ To view it on a phone on the same network, use `http://<your-pc-ip>:5500` (the s
 | --- | --- |
 | `index.html` | Page structure |
 | `style.css` | Black-on-white styling |
-| `quotes.js` | The 100 quotes, grouped by category |
-| `app.js` | Random draw, click counter, clock |
+| `quotes.js` | Bundled fallback quotes, grouped by category |
+| `app.js` | API fetch, prefetch, fallback, click counter, clock |
 
 ## How the draw works
 
-Quotes are drawn in a shuffled "bag": each quote appears once before any repeats, and the same quote never appears twice in a row.
+Each click shows one quote. Quotes are fetched live from the Quotable API (a free, keyless mirror at `api.quotable.kurokeita.dev`); the next one is prefetched so a click feels instant.
+
+If the API is unreachable — offline, blocked, or down — the site falls back to the 100 quotes bundled in `quotes.js`, and the footer label changes to "quotes from the bundled set". A quote is never repeated back-to-back.
 
 ## Attribution
 
-Some quotes carry a note such as "Attribution uncertain" or "Commonly attributed". Those caveats are kept from the source collection and shown next to the author.
+Some bundled quotes carry a note such as "Attribution uncertain" or "Commonly attributed". Those caveats are kept from the source collection and shown next to the author.
