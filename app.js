@@ -1,40 +1,20 @@
 const API_URL = "https://api.quotable.kurokeita.dev/api/quotes/random?maxLength=180";
 const INDEX_URL = "quotes-index.json";
 
-const quoteEl = document.getElementById("quote");
-const authorEl = document.getElementById("author");
-const noteEl = document.getElementById("note");
-const categoryEl = document.getElementById("category");
-const countEl = document.getElementById("count");
-const clockEl = document.getElementById("clock");
-const sourceEl = document.getElementById("source");
-const button = document.getElementById("spark");
-const blockEl = document.getElementById("quote-block");
+const feedEl = document.getElementById("feed");
 const searchEl = document.getElementById("search");
 const resultsEl = document.getElementById("results");
+const navUp = document.getElementById("nav-up");
+const navDown = document.getElementById("nav-down");
 
-let clicks = 0;
-let lastText = "";
+// ── Quote fetching ──────────────────────────────────────────
 
-// Live API state
 let useApi = true;
 let failures = 0;
 let nextQuote = null;
 let pending = null;
-
-// Offline fallback
 let bag = [];
-
-// Search state
-const PAGE_SIZE = 20;
-let index = null;
-let indexPromise = null;
-let searchToken = 0;
-let matchList = [];
-let shown = 0;
-let resultsCountEl = null;
-let resultsListEl = null;
-let moreEl = null;
+let lastText = "";
 
 function shuffle(items) {
   const list = items.slice();
@@ -45,41 +25,31 @@ function shuffle(items) {
   return list;
 }
 
-function setSource(text) {
-  sourceEl.textContent = text;
-}
-
 async function fetchQuote() {
   try {
     const res = await fetch(API_URL, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
-
     const data = await res.json();
     const raw = data.quote || (Array.isArray(data) ? data[0] : data);
     const text = raw && (raw.content || raw.text);
     if (!text) throw new Error("unexpected response");
 
     const author =
-      raw.author && raw.author.name
-        ? raw.author.name
-        : typeof raw.author === "string" && raw.author
-          ? raw.author
-          : "Unknown";
+      raw.author && raw.author.name ? raw.author.name
+      : typeof raw.author === "string" && raw.author ? raw.author
+      : "Unknown";
 
     const tags = Array.isArray(raw.tags)
-      ? raw.tags.map((tag) => (tag && tag.name ? tag.name : tag)).filter(Boolean)
+      ? raw.tags.map((t) => (t && t.name ? t.name : t)).filter(Boolean)
       : [];
-    const specific = tags.find((tag) => String(tag).toLowerCase() !== "famous quotes");
+    const specific = tags.find((t) => String(t).toLowerCase() !== "famous quotes");
     const category = specific ? String(specific) : tags.length ? String(tags[0]) : "";
 
     failures = 0;
     return { text, author, category };
-  } catch (err) {
-    failures += 1;
-    if (failures >= 2) {
-      useApi = false;
-      setSource("quotes from the bundled set");
-    }
+  } catch {
+    failures++;
+    if (failures >= 2) useApi = false;
     return null;
   }
 }
@@ -87,11 +57,7 @@ async function fetchQuote() {
 function prefetch() {
   if (!useApi) return Promise.resolve(null);
   if (!pending) {
-    pending = fetchQuote().then((quote) => {
-      pending = null;
-      nextQuote = quote;
-      return quote;
-    });
+    pending = fetchQuote().then((q) => { pending = null; nextQuote = q; return q; });
   }
   return pending;
 }
@@ -103,82 +69,165 @@ function takeFromBundle() {
 
 async function takeQuote() {
   for (let attempt = 0; attempt < 2; attempt++) {
-    let quote = nextQuote;
+    let q = nextQuote;
     nextQuote = null;
-
-    if (!quote && useApi) quote = await prefetch();
-    if (!quote) quote = takeFromBundle();
-
-    if (quote.text !== lastText) return quote;
+    if (!q && useApi) q = await prefetch();
+    if (!q) q = takeFromBundle();
+    if (q.text !== lastText) return q;
   }
   return takeFromBundle();
 }
 
-function show(quote) {
-  lastText = quote.text;
-  quoteEl.textContent = quote.text;
-  authorEl.textContent = quote.author || "Unknown";
+// ── Slide / feed ────────────────────────────────────────────
 
-  if (quote.category) {
-    categoryEl.textContent = quote.category;
-    categoryEl.hidden = false;
-  } else {
-    categoryEl.textContent = "";
-    categoryEl.hidden = true;
-  }
+const slides = [];   // array of { el, quote }
+let current = 0;     // index of active slide
+let transitioning = false;
 
-  if (quote.note) {
-    noteEl.textContent = "(" + quote.note + ")";
-    noteEl.hidden = false;
-  } else {
-    noteEl.textContent = "";
-    noteEl.hidden = true;
-  }
+function buildCard(quote) {
+  const card = document.createElement("div");
+  card.className = "quote-card";
+
+  const cat = document.createElement("p");
+  cat.className = "card-category";
+  cat.textContent = quote.category || "";
+  cat.hidden = !quote.category;
+
+  const q = document.createElement("blockquote");
+  q.className = "card-quote";
+  q.textContent = quote.text;
+
+  const who = document.createElement("p");
+  who.className = "card-author";
+  who.textContent = quote.author || "Unknown";
+
+  const actions = document.createElement("div");
+  actions.className = "card-actions";
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "card-btn";
+  copyBtn.textContent = "Copy";
+  copyBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(`"${quote.text}" — ${quote.author}`).then(() => {
+      copyBtn.textContent = "Copied!";
+      copyBtn.classList.add("copied");
+      setTimeout(() => { copyBtn.textContent = "Copy"; copyBtn.classList.remove("copied"); }, 2000);
+    });
+  });
+
+  const shareBtn = document.createElement("button");
+  shareBtn.type = "button";
+  shareBtn.className = "card-btn";
+  shareBtn.textContent = "Share";
+  shareBtn.addEventListener("click", () => {
+    const text = `"${quote.text}" — ${quote.author}`;
+    if (navigator.share) {
+      navigator.share({ text });
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        shareBtn.textContent = "Copied!";
+        setTimeout(() => { shareBtn.textContent = "Share"; }, 2000);
+      });
+    }
+  });
+
+  actions.append(copyBtn, shareBtn);
+  card.append(cat, q, who, actions);
+  return card;
 }
 
-function showQuoteView() {
-  resultsEl.hidden = true;
-  resultsEl.textContent = "";
-  blockEl.hidden = false;
+function createSlide(quote, position) {
+  const slide = document.createElement("div");
+  slide.className = "slide " + position;
+  slide.append(buildCard(quote));
+  feedEl.append(slide);
+  return { el: slide, quote };
 }
 
-button.addEventListener("click", async () => {
-  showQuoteView();
-  searchEl.value = "";
+function updateNavButtons() {
+  navUp.disabled = current === 0;
+}
 
-  const quote = await takeQuote();
-  if (!quote) return;
+async function goTo(direction) {
+  if (transitioning) return;
 
-  show(quote);
-  countEl.textContent = ++clicks;
-  prefetch();
+  if (direction === "up" && current === 0) return;
+
+  transitioning = true;
+
+  if (direction === "down") {
+    // fetch next quote and append a new slide below
+    const quote = await takeQuote();
+    lastText = quote.text;
+    const newSlide = createSlide(quote, "below");
+    slides.push(newSlide);
+
+    // force reflow so transition fires
+    newSlide.el.getBoundingClientRect();
+
+    // move current up, new one into view
+    slides[current].el.className = "slide above";
+    newSlide.el.className = "slide active";
+    current = slides.length - 1;
+    prefetch();
+  } else {
+    // go back up
+    slides[current].el.className = "slide below";
+    slides[current - 1].el.className = "slide active";
+    current--;
+  }
+
+  updateNavButtons();
+
+  setTimeout(() => { transitioning = false; }, 460);
+}
+
+// ── Keyboard navigation ──────────────────────────────────────
+
+document.addEventListener("keydown", (e) => {
+  if (document.activeElement === searchEl) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); goTo("down"); }
+  if (e.key === "ArrowUp")   { e.preventDefault(); goTo("up"); }
 });
 
-/* ---------- search ---------- */
+navDown.addEventListener("click", () => goTo("down"));
+navUp.addEventListener("click", () => goTo("up"));
+
+// ── Touch / swipe ────────────────────────────────────────────
+
+let touchStartY = 0;
+
+feedEl.addEventListener("touchstart", (e) => {
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+feedEl.addEventListener("touchend", (e) => {
+  const diff = touchStartY - e.changedTouches[0].clientY;
+  if (Math.abs(diff) < 40) return;
+  goTo(diff > 0 ? "down" : "up");
+}, { passive: true });
+
+// ── Search ───────────────────────────────────────────────────
+
+const PAGE_SIZE = 20;
+let index = null;
+let indexPromise = null;
+let searchToken = 0;
+let matchList = [];
+let shown = 0;
+let resultsCountEl = null;
+let resultsListEl = null;
+let moreEl = null;
 
 function loadIndex() {
   if (index) return Promise.resolve(index);
   if (indexPromise) return indexPromise;
-
   indexPromise = fetch(INDEX_URL, { cache: "force-cache" })
-    .then((res) => {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    })
-    .then((list) => {
-      index = list.map((q) => ({ text: q.t, author: q.a, category: q.c }));
-      return index;
-    })
-    .catch(() => {
-      index = QUOTES.map((q) => ({ text: q.text, author: q.author, category: q.category }));
-      return index;
-    });
-
+    .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
+    .then((list) => { index = list.map((q) => ({ text: q.t, author: q.a, category: q.c })); return index; })
+    .catch(() => { index = QUOTES.map((q) => ({ text: q.text, author: q.author, category: q.category })); return index; });
   return indexPromise;
-}
-
-function searchable(entry) {
-  return (entry.text + " " + entry.author + " " + entry.category).toLowerCase();
 }
 
 function resultItem(entry) {
@@ -197,10 +246,19 @@ function resultItem(entry) {
 
   btn.append(text, meta);
   btn.addEventListener("click", () => {
-    show(entry);
-    countEl.textContent = ++clicks;
+    // show selected quote as a new slide
+    lastText = entry.text;
+    const newSlide = createSlide(entry, "below");
+    slides.push(newSlide);
+    newSlide.el.getBoundingClientRect();
+    slides[current].el.className = "slide above";
+    newSlide.el.className = "slide active";
+    current = slides.length - 1;
+    updateNavButtons();
+
     searchEl.value = "";
-    showQuoteView();
+    resultsEl.hidden = true;
+    resultsEl.textContent = "";
   });
 
   item.append(btn);
@@ -219,7 +277,6 @@ function appendResults() {
   chunk.forEach((entry) => resultsListEl.append(resultItem(entry)));
   shown += chunk.length;
   updateResultsCount();
-
   const remaining = matchList.length - shown;
   if (remaining > 0) {
     moreEl.hidden = false;
@@ -237,11 +294,8 @@ function renderResults(found, query) {
   if (!found.length) {
     const empty = document.createElement("p");
     empty.className = "empty";
-    empty.textContent = "No quotes match “" + query + "”.";
+    empty.textContent = "No quotes match \u201c" + query + "\u201d.";
     resultsEl.append(empty);
-    resultsCountEl = null;
-    resultsListEl = null;
-    moreEl = null;
     return;
   }
 
@@ -263,14 +317,14 @@ function renderResults(found, query) {
 async function runSearch(raw) {
   const query = raw.trim();
   if (query.length < 2) {
-    showQuoteView();
+    resultsEl.hidden = true;
+    resultsEl.textContent = "";
     return;
   }
 
   const token = ++searchToken;
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
 
-  blockEl.hidden = true;
   resultsEl.hidden = false;
   resultsEl.textContent = "";
 
@@ -283,7 +337,7 @@ async function runSearch(raw) {
   if (token !== searchToken) return;
 
   const found = list.filter((entry) => {
-    const haystack = searchable(entry);
+    const haystack = (entry.text + " " + entry.author + " " + entry.category).toLowerCase();
     return terms.every((term) => haystack.includes(term));
   });
 
@@ -297,56 +351,28 @@ searchEl.addEventListener("input", () => {
   searchTimer = setTimeout(() => runSearch(searchEl.value), 140);
 });
 
-searchEl.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
+searchEl.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
     searchEl.value = "";
-    showQuoteView();
+    resultsEl.hidden = true;
+    resultsEl.textContent = "";
     searchEl.blur();
-    return;
   }
-
-  if (event.key === "Enter") {
+  if (e.key === "Enter") {
     const first = resultsEl.querySelector(".result");
-    if (first) {
-      event.preventDefault();
-      first.click();
-    }
+    if (first) { e.preventDefault(); first.click(); }
   }
 });
 
-const copyBtn = document.getElementById("copy-btn");
-const shareBtn = document.getElementById("share-btn");
+// ── Boot ─────────────────────────────────────────────────────
 
-copyBtn.addEventListener("click", () => {
-  const text = `"${quoteEl.textContent}" — ${authorEl.textContent}`;
-  navigator.clipboard.writeText(text).then(() => {
-    copyBtn.textContent = "Copied!";
-    copyBtn.classList.add("copied");
-    setTimeout(() => {
-      copyBtn.textContent = "Copy";
-      copyBtn.classList.remove("copied");
-    }, 2000);
-  });
-});
-
-shareBtn.addEventListener("click", () => {
-  const text = `"${quoteEl.textContent}" — ${authorEl.textContent}`;
-  if (navigator.share) {
-    navigator.share({ text });
-  } else {
-    navigator.clipboard.writeText(text).then(() => {
-      shareBtn.textContent = "Link copied!";
-      setTimeout(() => { shareBtn.textContent = "Share"; }, 2000);
-    });
-  }
-});
-
-
-
-function tick() {
-  clockEl.textContent = new Date().toLocaleTimeString();
+async function init() {
+  const first = await takeQuote();
+  lastText = first.text;
+  const firstSlide = createSlide(first, "active");
+  slides.push(firstSlide);
+  updateNavButtons();
+  prefetch();
 }
 
-prefetch();
-tick();
-setInterval(tick, 1000);
+init();

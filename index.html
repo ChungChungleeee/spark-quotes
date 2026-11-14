@@ -3,54 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spark — 100 quotes</title>
+  <title>Spark — Quotes</title>
   <link rel="icon" href="favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" href="favicon-32.png" sizes="32x32" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main>
-    <h1>Spark</h1>
-    <p class="lede">100 quotes. One per click.</p>
 
+  <!-- Top bar -->
+  <header class="topbar">
+    <span class="topbar-title">Spark</span>
     <div class="search" role="search">
       <input
         id="search"
         type="search"
-        placeholder="Search quotes, authors, categories"
+        placeholder="Search quotes, authors…"
         autocomplete="off"
         spellcheck="false"
-        aria-label="Search quotes, authors and categories"
-        aria-controls="results"
+        aria-label="Search quotes"
       />
     </div>
+  </header>
 
-    <section id="results" class="results" hidden aria-live="polite"></section>
+  <!-- Search results overlay -->
+  <section id="results" class="results-overlay" hidden aria-live="polite"></section>
 
-    <figure class="quote-block" id="quote-block" aria-live="polite">
-      <p class="category" id="category">Success and ambition</p>
-      <blockquote class="quote" id="quote">The future depends on what you do today.</blockquote>
-      <figcaption class="who">
-        <span id="author">Mahatma Gandhi</span>
-        <span class="note" id="note" hidden></span>
-      </figcaption>
-      <div class="card-actions">
-        <button id="copy-btn" type="button" class="card-btn">Copy</button>
-        <button id="share-btn" type="button" class="card-btn">Share</button>
-      </div>
-    </figure>
+  <!-- Feed -->
+  <div class="feed" id="feed"></div>
 
-    <div class="button-row">
-      <button id="spark" type="button">New quote</button>
-    </div>
-
-    <footer class="meta">
-      <span><span id="count">0</span> clicks</span>
-      <span id="clock">--:--:--</span>
-      <span id="source" class="source">quotes via Quotable</span>
-    </footer>
-  </main>
+  <!-- Nav arrows -->
+  <nav class="nav-arrows">
+    <button class="nav-btn" id="nav-up" aria-label="Previous quote">&#8679;</button>
+    <button class="nav-btn" id="nav-down" aria-label="Next quote">&#8681;</button>
+  </nav>
 
   <script src="quotes.js"></script>
   <script src="app.js"></script>
