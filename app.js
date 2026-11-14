@@ -54,7 +54,8 @@ async function fetchQuote() {
     const tags = Array.isArray(raw.tags)
       ? raw.tags.map((tag) => (tag && tag.name ? tag.name : tag)).filter(Boolean)
       : [];
-    const category = tags.length ? String(tags[0]) : "";
+    const specific = tags.find((tag) => String(tag).toLowerCase() !== "famous quotes");
+    const category = specific ? String(specific) : tags.length ? String(tags[0]) : "";
 
     failures = 0;
     return { text, author, category };
