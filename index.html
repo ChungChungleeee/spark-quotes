@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spark — 100 quotes</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>Spark</h1>
+    <p class="lede">100 quotes. One per click.</p>
+
+    <button id="spark" type="button">New quote</button>
+
+    <figure class="quote-block">
+      <blockquote class="quote" id="quote" aria-live="polite">The future depends on what you do today.</blockquote>
+      <figcaption class="who">
+        <span id="author">Mahatma Gandhi</span>
+        <span class="note" id="note" hidden></span>
+      </figcaption>
+    </figure>
+
+    <footer class="meta">
+      <span><span id="count">0</span> clicks</span>
+      <span id="clock">--:--:--</span>
+    </footer>
+  </main>
+
+  <script src="quotes.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
