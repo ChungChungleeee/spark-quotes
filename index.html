@@ -14,8 +14,6 @@
     <h1>Spark</h1>
     <p class="lede">100 quotes. One per click.</p>
 
-    <button id="spark" type="button">New quote</button>
-
     <div class="search" role="search">
       <input
         id="search"
@@ -37,7 +35,15 @@
         <span id="author">Mahatma Gandhi</span>
         <span class="note" id="note" hidden></span>
       </figcaption>
+      <div class="card-actions">
+        <button id="copy-btn" type="button" class="card-btn">Copy</button>
+        <button id="share-btn" type="button" class="card-btn">Share</button>
+      </div>
     </figure>
+
+    <div class="button-row">
+      <button id="spark" type="button">New quote</button>
+    </div>
 
     <footer class="meta">
       <span><span id="count">0</span> clicks</span>

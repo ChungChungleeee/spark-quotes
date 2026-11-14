@@ -314,7 +314,34 @@ searchEl.addEventListener("keydown", (event) => {
   }
 });
 
-/* ---------- clock ---------- */
+const copyBtn = document.getElementById("copy-btn");
+const shareBtn = document.getElementById("share-btn");
+
+copyBtn.addEventListener("click", () => {
+  const text = `"${quoteEl.textContent}" — ${authorEl.textContent}`;
+  navigator.clipboard.writeText(text).then(() => {
+    copyBtn.textContent = "Copied!";
+    copyBtn.classList.add("copied");
+    setTimeout(() => {
+      copyBtn.textContent = "Copy";
+      copyBtn.classList.remove("copied");
+    }, 2000);
+  });
+});
+
+shareBtn.addEventListener("click", () => {
+  const text = `"${quoteEl.textContent}" — ${authorEl.textContent}`;
+  if (navigator.share) {
+    navigator.share({ text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      shareBtn.textContent = "Link copied!";
+      setTimeout(() => { shareBtn.textContent = "Share"; }, 2000);
+    });
+  }
+});
+
+
 
 function tick() {
   clockEl.textContent = new Date().toLocaleTimeString();

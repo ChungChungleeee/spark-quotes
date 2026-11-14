@@ -33,6 +33,12 @@ h1 {
   color: #6b6b6b;
 }
 
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
 button {
   font: inherit;
   padding: 9px 18px;
@@ -54,16 +60,53 @@ button:focus-visible {
   outline-offset: 3px;
 }
 
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.card-btn {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 14px;
+  color: #ffffff;
+  background: transparent;
+  border: 1px solid #444444;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.card-btn:hover {
+  background: #1a1a1a;
+  border-color: #888888;
+}
+
+.card-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.card-btn.copied {
+  border-color: #888888;
+  color: #aaaaaa;
+}
+
 .quote-block {
   margin: 32px 0 0;
-  padding-top: 24px;
-  border-top: 1px solid #e6e6e6;
+  padding: 24px;
+  background: #000000;
+  color: #ffffff;
+  border-radius: 4px;
 }
 
 .category {
   margin: 0 0 10px;
   font-size: 12px;
-  color: #6b6b6b;
+  color: #888888;
 }
 
 .category[hidden] {
@@ -81,7 +124,7 @@ button:focus-visible {
 .who {
   margin-top: 14px;
   font-size: 14px;
-  color: #000000;
+  color: #aaaaaa;
 }
 
 .who::before {
@@ -164,23 +207,23 @@ button:focus-visible {
 .result {
   display: block;
   width: 100%;
-  margin: 0 0 2px;
-  padding: 11px 10px;
+  margin: 0 0 8px;
+  padding: 14px;
   font: inherit;
-  color: #000000;
+  color: #ffffff;
   text-align: left;
-  background: none;
+  background: #000000;
   border: 0;
-  border-radius: 2px;
+  border-radius: 4px;
   cursor: pointer;
 }
 
 .result:hover {
-  background: #f4f4f4;
+  background: #1a1a1a;
 }
 
 .result:focus-visible {
-  outline: 2px solid #000000;
+  outline: 2px solid #ffffff;
   outline-offset: -2px;
 }
 
@@ -194,7 +237,7 @@ button:focus-visible {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: #6b6b6b;
+  color: #888888;
 }
 
 .more {
