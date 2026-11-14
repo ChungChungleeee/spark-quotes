@@ -26,9 +26,15 @@ let pending = null;
 let bag = [];
 
 // Search state
+const PAGE_SIZE = 20;
 let index = null;
 let indexPromise = null;
 let searchToken = 0;
+let matchList = [];
+let shown = 0;
+let resultsCountEl = null;
+let resultsListEl = null;
+let moreEl = null;
 
 function shuffle(items) {
   const list = items.slice();
@@ -175,54 +181,83 @@ function searchable(entry) {
   return (entry.text + " " + entry.author + " " + entry.category).toLowerCase();
 }
 
-function renderResults(matches, query) {
+function resultItem(entry) {
+  const item = document.createElement("li");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "result";
+
+  const text = document.createElement("span");
+  text.className = "result-quote";
+  text.textContent = entry.text;
+
+  const meta = document.createElement("span");
+  meta.className = "result-meta";
+  meta.textContent = entry.author + (entry.category ? " · " + entry.category : "");
+
+  btn.append(text, meta);
+  btn.addEventListener("click", () => {
+    show(entry);
+    countEl.textContent = ++clicks;
+    searchEl.value = "";
+    showQuoteView();
+  });
+
+  item.append(btn);
+  return item;
+}
+
+function updateResultsCount() {
+  const total = matchList.length;
+  const noun = total === 1 ? "result" : "results";
+  resultsCountEl.textContent =
+    shown < total ? "showing " + shown + " of " + total + " " + noun : total + " " + noun;
+}
+
+function appendResults() {
+  const chunk = matchList.slice(shown, shown + PAGE_SIZE);
+  chunk.forEach((entry) => resultsListEl.append(resultItem(entry)));
+  shown += chunk.length;
+  updateResultsCount();
+
+  const remaining = matchList.length - shown;
+  if (remaining > 0) {
+    moreEl.hidden = false;
+    moreEl.textContent = "Show " + Math.min(PAGE_SIZE, remaining) + " more";
+  } else {
+    moreEl.hidden = true;
+  }
+}
+
+function renderResults(found, query) {
+  matchList = found;
+  shown = 0;
   resultsEl.textContent = "";
 
-  if (!matches.length) {
+  if (!found.length) {
     const empty = document.createElement("p");
     empty.className = "empty";
     empty.textContent = "No quotes match “" + query + "”.";
     resultsEl.append(empty);
+    resultsCountEl = null;
+    resultsListEl = null;
+    moreEl = null;
     return;
   }
 
-  const count = document.createElement("p");
-  count.className = "results-count";
-  count.textContent =
-    matches.length + (matches.length === 1 ? " result" : " results") +
-    (matches.length > 20 ? " · showing first 20" : "");
-  resultsEl.append(count);
+  resultsCountEl = document.createElement("p");
+  resultsCountEl.className = "results-count";
 
-  const list = document.createElement("ul");
-  list.className = "results-list";
+  resultsListEl = document.createElement("ul");
+  resultsListEl.className = "results-list";
 
-  matches.slice(0, 20).forEach((entry) => {
-    const item = document.createElement("li");
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "result";
+  moreEl = document.createElement("button");
+  moreEl.type = "button";
+  moreEl.className = "more";
+  moreEl.addEventListener("click", appendResults);
 
-    const text = document.createElement("span");
-    text.className = "result-quote";
-    text.textContent = entry.text;
-
-    const meta = document.createElement("span");
-    meta.className = "result-meta";
-    meta.textContent = entry.author + (entry.category ? " · " + entry.category : "");
-
-    btn.append(text, meta);
-    btn.addEventListener("click", () => {
-      show(entry);
-      countEl.textContent = ++clicks;
-      searchEl.value = "";
-      showQuoteView();
-    });
-
-    item.append(btn);
-    list.append(item);
-  });
-
-  resultsEl.append(list);
+  resultsEl.append(resultsCountEl, resultsListEl, moreEl);
+  appendResults();
 }
 
 async function runSearch(raw) {
@@ -247,12 +282,12 @@ async function runSearch(raw) {
   const list = await loadIndex();
   if (token !== searchToken) return;
 
-  const matches = list.filter((entry) => {
+  const found = list.filter((entry) => {
     const haystack = searchable(entry);
     return terms.every((term) => haystack.includes(term));
   });
 
-  renderResults(matches, query);
+  renderResults(found, query);
 }
 
 let searchTimer = null;

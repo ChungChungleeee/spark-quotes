@@ -44,6 +44,8 @@ The box under the button filters quotes by keyword, author or category. Typing n
 
 Click a result to make it the quote on the page. `Escape` clears the search and returns to the quote, and `Enter` opens the first result.
 
+Results come 20 at a time, with a **Show 20 more** button underneath (it says how many are left in the last batch). The count above the list keeps track, e.g. `showing 40 of 558 results`.
+
 Search runs against `quotes-index.json`, a snapshot of the API's full catalogue (2,107 quotes, 748 authors, 48 categories) fetched once and shipped with the site. It is loaded lazily on the first search, so the page itself stays small, and the API is never called per keystroke. If the index cannot be fetched, search falls back to the 100 bundled quotes.
 
 The index is a snapshot rather than live data. To rebuild it, page through the API's list endpoint (`/api/quotes?limit=100&page=N`, 100 per page, 21 pages) and write out `{ "t": text, "a": author, "c": category }` for each quote.
