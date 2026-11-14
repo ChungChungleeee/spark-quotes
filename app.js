@@ -400,13 +400,119 @@ async function init() {
   themeToggle.addEventListener("click", () => {
     const isDark = html.getAttribute("data-theme") === "dark";
     html.setAttribute("data-theme", isDark ? "light" : "dark");
-    // swap icon
-    themeToggle.innerHTML = isDark
-      ? `<i data-lucide="moon"></i>`
-      : `<i data-lucide="sun"></i>`;
+    themeToggle.innerHTML = isDark ? `<i data-lucide="moon"></i>` : `<i data-lucide="sun"></i>`;
     lucide.createIcons({ rootElement: themeToggle });
   });
 
+  // ── Panel (categories / authors) ──────────────────────────
+  const panelEl    = document.getElementById("panel");
+  const panelTitle = document.getElementById("panel-title");
+  const panelBody  = document.getElementById("panel-body");
+  const panelClose = document.getElementById("panel-close");
+
+  function closePanel() {
+    panelEl.hidden = true;
+    document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector(".sidebar-btn[title='Home']").classList.add("active");
+  }
+
+  panelClose.addEventListener("click", closePanel);
+  lucide.createIcons({ rootElement: panelClose });
+
+  function loadQuoteFromPanel(quote) {
+    lastText = quote.text;
+    const newSlide = createSlide(quote, "below");
+    slides.push(newSlide);
+    newSlide.el.getBoundingClientRect();
+    slides[current].el.className = "slide above";
+    newSlide.el.className = "slide active";
+    current = slides.length - 1;
+    updateNavButtons();
+    closePanel();
+  }
+
+  // Level 1: show list of categories or authors
+  function showGroupList(title, groupBy) {
+    panelTitle.textContent = title;
+    panelBody.textContent = "";
+    document.getElementById("panel-back").hidden = true;
+
+    const map = new Map();
+    QUOTES.forEach(q => {
+      const key = q[groupBy] || "Unknown";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(q);
+    });
+
+    const sorted = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const ul = document.createElement("ul");
+    ul.className = "group-quotes";
+
+    sorted.forEach(([key, quotes]) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "group-quote-btn group-list-item";
+
+      const label = document.createElement("span");
+      label.textContent = key;
+
+      const count = document.createElement("span");
+      count.className = "group-count";
+      count.textContent = quotes.length + " quote" + (quotes.length !== 1 ? "s" : "");
+
+      btn.append(label, count);
+      btn.addEventListener("click", () => showQuoteList(title, groupBy, key, quotes));
+      li.append(btn);
+      ul.append(li);
+    });
+
+    panelBody.append(ul);
+    panelEl.hidden = false;
+  }
+
+  // Level 2: show quotes inside a selected category or author
+  function showQuoteList(parentTitle, groupBy, key, quotes) {
+    panelTitle.textContent = key;
+    panelBody.textContent = "";
+
+    const backBtn = document.getElementById("panel-back");
+    backBtn.hidden = false;
+    backBtn.onclick = () => showGroupList(parentTitle, groupBy);
+
+    const ul = document.createElement("ul");
+    ul.className = "group-quotes";
+
+    quotes.forEach(q => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "group-quote-btn";
+      btn.textContent = q.text;
+      btn.addEventListener("click", () => loadQuoteFromPanel(q));
+      li.append(btn);
+      ul.append(li);
+    });
+
+    panelBody.append(ul);
+  }
+
+  // Wire sidebar buttons
+  document.querySelector(".sidebar-btn[title='Categories']").addEventListener("click", () => {
+    document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector(".sidebar-btn[title='Categories']").classList.add("active");
+    showGroupList("Categories", "category");
+  });
+
+  document.querySelector(".sidebar-btn[title='Authors']").addEventListener("click", () => {
+    document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector(".sidebar-btn[title='Authors']").classList.add("active");
+    showGroupList("Authors", "author");
+  });
+
+  document.querySelector(".sidebar-btn[title='Home']").addEventListener("click", closePanel);
+
+  // ── First quote ───────────────────────────────────────────
   const first = await takeQuote();
   lastText = first.text;
   const firstSlide = createSlide(first, "active");
