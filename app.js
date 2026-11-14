@@ -1,4 +1,5 @@
 const API_URL = "https://api.quotable.kurokeita.dev/api/quotes/random?maxLength=180";
+const INDEX_URL = "quotes-index.json";
 
 const quoteEl = document.getElementById("quote");
 const authorEl = document.getElementById("author");
@@ -8,6 +9,9 @@ const countEl = document.getElementById("count");
 const clockEl = document.getElementById("clock");
 const sourceEl = document.getElementById("source");
 const button = document.getElementById("spark");
+const blockEl = document.getElementById("quote-block");
+const searchEl = document.getElementById("search");
+const resultsEl = document.getElementById("results");
 
 let clicks = 0;
 let lastText = "";
@@ -20,6 +24,11 @@ let pending = null;
 
 // Offline fallback
 let bag = [];
+
+// Search state
+let index = null;
+let indexPromise = null;
+let searchToken = 0;
 
 function shuffle(items) {
   const list = items.slice();
@@ -121,7 +130,16 @@ function show(quote) {
   }
 }
 
+function showQuoteView() {
+  resultsEl.hidden = true;
+  resultsEl.textContent = "";
+  blockEl.hidden = false;
+}
+
 button.addEventListener("click", async () => {
+  showQuoteView();
+  searchEl.value = "";
+
   const quote = await takeQuote();
   if (!quote) return;
 
@@ -129,6 +147,139 @@ button.addEventListener("click", async () => {
   countEl.textContent = ++clicks;
   prefetch();
 });
+
+/* ---------- search ---------- */
+
+function loadIndex() {
+  if (index) return Promise.resolve(index);
+  if (indexPromise) return indexPromise;
+
+  indexPromise = fetch(INDEX_URL, { cache: "force-cache" })
+    .then((res) => {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
+    .then((list) => {
+      index = list.map((q) => ({ text: q.t, author: q.a, category: q.c }));
+      return index;
+    })
+    .catch(() => {
+      index = QUOTES.map((q) => ({ text: q.text, author: q.author, category: q.category }));
+      return index;
+    });
+
+  return indexPromise;
+}
+
+function searchable(entry) {
+  return (entry.text + " " + entry.author + " " + entry.category).toLowerCase();
+}
+
+function renderResults(matches, query) {
+  resultsEl.textContent = "";
+
+  if (!matches.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No quotes match “" + query + "”.";
+    resultsEl.append(empty);
+    return;
+  }
+
+  const count = document.createElement("p");
+  count.className = "results-count";
+  count.textContent =
+    matches.length + (matches.length === 1 ? " result" : " results") +
+    (matches.length > 20 ? " · showing first 20" : "");
+  resultsEl.append(count);
+
+  const list = document.createElement("ul");
+  list.className = "results-list";
+
+  matches.slice(0, 20).forEach((entry) => {
+    const item = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "result";
+
+    const text = document.createElement("span");
+    text.className = "result-quote";
+    text.textContent = entry.text;
+
+    const meta = document.createElement("span");
+    meta.className = "result-meta";
+    meta.textContent = entry.author + (entry.category ? " · " + entry.category : "");
+
+    btn.append(text, meta);
+    btn.addEventListener("click", () => {
+      show(entry);
+      countEl.textContent = ++clicks;
+      searchEl.value = "";
+      showQuoteView();
+    });
+
+    item.append(btn);
+    list.append(item);
+  });
+
+  resultsEl.append(list);
+}
+
+async function runSearch(raw) {
+  const query = raw.trim();
+  if (query.length < 2) {
+    showQuoteView();
+    return;
+  }
+
+  const token = ++searchToken;
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+
+  blockEl.hidden = true;
+  resultsEl.hidden = false;
+  resultsEl.textContent = "";
+
+  const loading = document.createElement("p");
+  loading.className = "empty";
+  loading.textContent = "Searching…";
+  resultsEl.append(loading);
+
+  const list = await loadIndex();
+  if (token !== searchToken) return;
+
+  const matches = list.filter((entry) => {
+    const haystack = searchable(entry);
+    return terms.every((term) => haystack.includes(term));
+  });
+
+  renderResults(matches, query);
+}
+
+let searchTimer = null;
+
+searchEl.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => runSearch(searchEl.value), 140);
+});
+
+searchEl.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    searchEl.value = "";
+    showQuoteView();
+    searchEl.blur();
+    return;
+  }
+
+  if (event.key === "Enter") {
+    const first = resultsEl.querySelector(".result");
+    if (first) {
+      event.preventDefault();
+      first.click();
+    }
+  }
+});
+
+/* ---------- clock ---------- */
 
 function tick() {
   clockEl.textContent = new Date().toLocaleTimeString();

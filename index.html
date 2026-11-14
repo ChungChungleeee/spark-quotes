@@ -16,7 +16,21 @@
 
     <button id="spark" type="button">New quote</button>
 
-    <figure class="quote-block" aria-live="polite">
+    <div class="search" role="search">
+      <input
+        id="search"
+        type="search"
+        placeholder="Search quotes, authors, categories"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Search quotes, authors and categories"
+        aria-controls="results"
+      />
+    </div>
+
+    <section id="results" class="results" hidden aria-live="polite"></section>
+
+    <figure class="quote-block" id="quote-block" aria-live="polite">
       <p class="category" id="category">Success and ambition</p>
       <blockquote class="quote" id="quote">The future depends on what you do today.</blockquote>
       <figcaption class="who">
