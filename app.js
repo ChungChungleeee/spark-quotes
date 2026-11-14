@@ -132,7 +132,31 @@ function buildCard(quote) {
     }
   });
 
-  actions.append(copyBtn, shareBtn);
+  const likeBtn = document.createElement("button");
+  likeBtn.type = "button";
+  likeBtn.className = "icon-btn";
+  likeBtn.setAttribute("aria-label", "Like");
+  likeBtn.innerHTML = `<i data-lucide="heart"></i>`;
+  likeBtn.addEventListener("click", () => {
+    likeBtn.classList.toggle("active");
+  });
+
+  const bookmarkBtn = document.createElement("button");
+  bookmarkBtn.type = "button";
+  bookmarkBtn.className = "icon-btn";
+  bookmarkBtn.setAttribute("aria-label", "Bookmark");
+  bookmarkBtn.innerHTML = `<i data-lucide="bookmark"></i>`;
+  bookmarkBtn.addEventListener("click", () => {
+    bookmarkBtn.classList.toggle("active");
+  });
+
+  const iconGroup = document.createElement("div");
+  iconGroup.className = "icon-group";
+  iconGroup.append(likeBtn, bookmarkBtn);
+
+  actions.append(copyBtn, shareBtn, iconGroup);
+  setTimeout(() => lucide.createIcons({ nameAttr: "data-lucide", rootElement: actions }), 0);
+
   card.append(cat, q, who, actions);
   return card;
 }
@@ -367,6 +391,22 @@ searchEl.addEventListener("keydown", (e) => {
 // ── Boot ─────────────────────────────────────────────────────
 
 async function init() {
+  // Render Lucide icons
+  lucide.createIcons();
+
+  // Dark mode toggle
+  const themeToggle = document.getElementById("theme-toggle");
+  const html = document.documentElement;
+  themeToggle.addEventListener("click", () => {
+    const isDark = html.getAttribute("data-theme") === "dark";
+    html.setAttribute("data-theme", isDark ? "light" : "dark");
+    // swap icon
+    themeToggle.innerHTML = isDark
+      ? `<i data-lucide="moon"></i>`
+      : `<i data-lucide="sun"></i>`;
+    lucide.createIcons({ rootElement: themeToggle });
+  });
+
   const first = await takeQuote();
   lastText = first.text;
   const firstSlide = createSlide(first, "active");

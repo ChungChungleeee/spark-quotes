@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,8 +8,36 @@
   <link rel="icon" type="image/png" href="favicon-32.png" sizes="32x32" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo" title="Spark">
+      <i data-lucide="zap"></i>
+    </div>
+
+    <!-- Top nav items -->
+    <nav class="sidebar-nav">
+      <button class="sidebar-btn active" title="Home"><i data-lucide="home"></i></button>
+      <button class="sidebar-btn" title="Profile"><i data-lucide="user"></i></button>
+      <button class="sidebar-btn" title="Categories"><i data-lucide="layout-grid"></i></button>
+      <button class="sidebar-btn" title="Authors"><i data-lucide="feather"></i></button>
+      <button class="sidebar-btn" title="Likes"><i data-lucide="heart"></i></button>
+      <button class="sidebar-btn" title="Bookmarks"><i data-lucide="bookmark"></i></button>
+      <button class="sidebar-btn" title="Settings"><i data-lucide="settings"></i></button>
+    </nav>
+
+    <!-- Bottom items -->
+    <div class="sidebar-bottom">
+      <button class="sidebar-btn" id="theme-toggle" title="Toggle dark / light mode"><i data-lucide="sun"></i></button>
+      <button class="sidebar-btn" title="Log out"><i data-lucide="log-out"></i></button>
+    </div>
+
+  </aside>
 
   <!-- Top bar -->
   <header class="topbar">
