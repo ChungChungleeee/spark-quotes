@@ -9,72 +9,93 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.js" type="module"></script>
 </head>
 <body>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-
-    <!-- Logo -->
-    <div class="sidebar-logo" title="Spark">
-      <i data-lucide="zap"></i>
+  <!-- ── Hero page ── -->
+  <div class="hero" id="hero">
+    <div class="hero-inner">
+      <div class="hero-brand">
+        <i data-lucide="zap" class="hero-logo-icon"></i>
+        <span class="hero-logo-text">Spark</span>
+      </div>
+      <h1 class="hero-title">Welcome to Spark</h1>
+      <p class="hero-sub">A quote for every moment.</p>
+      <div class="hero-lottie">
+        <dotlottie-player
+          src="https://lottie.host/d1e76256-9e55-4aa7-9a3b-ceba31b8a0bc/EhWoQoqNaR.lottie"
+          background="transparent"
+          speed="1"
+          loop
+          autoplay
+        ></dotlottie-player>
+      </div>
+      <a href="login.html" class="hero-btn">Get Started</a>
     </div>
-
-    <!-- Top nav items -->
-    <nav class="sidebar-nav">
-      <button class="sidebar-btn active" title="Home"><i data-lucide="home"></i></button>
-      <button class="sidebar-btn" title="Profile"><i data-lucide="user"></i></button>
-      <button class="sidebar-btn" title="Categories"><i data-lucide="layout-grid"></i></button>
-      <button class="sidebar-btn" title="Authors"><i data-lucide="feather"></i></button>
-      <button class="sidebar-btn" title="Likes"><i data-lucide="heart"></i></button>
-      <button class="sidebar-btn" title="Bookmarks"><i data-lucide="bookmark"></i></button>
-      <button class="sidebar-btn" title="Settings"><i data-lucide="settings"></i></button>
-    </nav>
-
-    <!-- Bottom items -->
-    <div class="sidebar-bottom">
-      <button class="sidebar-btn" id="theme-toggle" title="Toggle dark / light mode"><i data-lucide="sun"></i></button>
-      <button class="sidebar-btn" title="Log out"><i data-lucide="log-out"></i></button>
-    </div>
-
-  </aside>
-
-  <!-- Top bar -->
-  <header class="topbar">
-    <span class="topbar-title">Spark</span>
-    <div class="search" role="search">
-      <input
-        id="search"
-        type="search"
-        placeholder="Search quotes, authors…"
-        autocomplete="off"
-        spellcheck="false"
-        aria-label="Search quotes"
-      />
-    </div>
-  </header>
-
-  <!-- Panel overlay (categories / authors) -->
-  <div class="panel" id="panel" hidden>
-    <div class="panel-header">
-      <button class="panel-back" id="panel-back" aria-label="Back" hidden><i data-lucide="arrow-left"></i></button>
-      <h2 class="panel-title" id="panel-title"></h2>
-      <button class="panel-close" id="panel-close" aria-label="Close"><i data-lucide="x"></i></button>
-    </div>
-    <div class="panel-body" id="panel-body"></div>
   </div>
 
-  <!-- Search results overlay -->
-  <section id="results" class="results-overlay" hidden aria-live="polite"></section>
+  <!-- ── Main app (hidden until logged in) ── -->
+  <div id="app" hidden>
 
-  <!-- Feed -->
-  <div class="feed" id="feed"></div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo" title="Spark">
+        <i data-lucide="zap"></i>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="sidebar-btn active" title="Home"><i data-lucide="home"></i></button>
+        <button class="sidebar-btn" title="Profile"><i data-lucide="user"></i></button>
+        <button class="sidebar-btn" title="Categories"><i data-lucide="layout-grid"></i></button>
+        <button class="sidebar-btn" title="Authors"><i data-lucide="feather"></i></button>
+        <button class="sidebar-btn" title="Likes"><i data-lucide="heart"></i></button>
+        <button class="sidebar-btn" title="Bookmarks"><i data-lucide="bookmark"></i></button>
+        <button class="sidebar-btn" title="Settings"><i data-lucide="settings"></i></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="sidebar-btn" id="theme-toggle" title="Toggle dark / light mode"><i data-lucide="sun"></i></button>
+        <button class="sidebar-btn" title="Log out"><i data-lucide="log-out"></i></button>
+      </div>
+    </aside>
 
-  <!-- Nav arrows -->
-  <nav class="nav-arrows">
-    <button class="nav-btn" id="nav-up" aria-label="Previous quote">&#8679;</button>
-    <button class="nav-btn" id="nav-down" aria-label="Next quote">&#8681;</button>
-  </nav>
+    <!-- Top bar -->
+    <header class="topbar">
+      <span class="topbar-title">Spark</span>
+      <div class="search" role="search">
+        <input
+          id="search"
+          type="search"
+          placeholder="Search quotes, authors…"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Search quotes"
+        />
+      </div>
+    </header>
+
+    <!-- Panel overlay (categories / authors) -->
+    <div class="panel" id="panel" hidden>
+      <div class="panel-header">
+        <button class="panel-back" id="panel-back" aria-label="Back" hidden><i data-lucide="arrow-left"></i></button>
+        <h2 class="panel-title" id="panel-title"></h2>
+        <button class="panel-close" id="panel-close" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="panel-body" id="panel-body"></div>
+    </div>
+
+    <!-- Search results overlay -->
+    <section id="results" class="results-overlay" hidden aria-live="polite"></section>
+
+    <!-- Feed -->
+    <div class="feed" id="feed"></div>
+
+    <!-- Nav arrows -->
+    <nav class="nav-arrows">
+      <button class="nav-btn" id="nav-up" aria-label="Previous quote">&#8679;</button>
+      <button class="nav-btn" id="nav-down" aria-label="Next quote">&#8681;</button>
+    </nav>
+
+  </div><!-- /#app -->
 
   <script src="quotes.js"></script>
   <script src="app.js"></script>

@@ -1,6 +1,19 @@
 const API_URL = "https://api.quotable.kurokeita.dev/api/quotes/random?maxLength=180";
 const INDEX_URL = "quotes-index.json";
 
+// ── Hero / app visibility ────────────────────────────────────
+// Show the main app if the user arrived from login/signup,
+// otherwise show the hero landing page.
+const heroEl = document.getElementById("hero");
+const appEl  = document.getElementById("app");
+
+if (sessionStorage.getItem("spark-authed")) {
+  heroEl.style.display = "none";
+  appEl.hidden = false;
+} else {
+  appEl.hidden = true;
+}
+
 const feedEl = document.getElementById("feed");
 const searchEl = document.getElementById("search");
 const resultsEl = document.getElementById("results");
@@ -517,7 +530,8 @@ async function init() {
     window.location.href = "login.html";
   });
   document.querySelector(".sidebar-btn[title='Log out']").addEventListener("click", () => {
-    window.location.href = "login.html";
+    sessionStorage.removeItem("spark-authed");
+    window.location.href = "index.html";
   });
 
   // ── First quote ───────────────────────────────────────────
