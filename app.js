@@ -3,6 +3,7 @@ const API_URL = "https://api.quotable.kurokeita.dev/api/quotes/random?maxLength=
 const quoteEl = document.getElementById("quote");
 const authorEl = document.getElementById("author");
 const noteEl = document.getElementById("note");
+const categoryEl = document.getElementById("category");
 const countEl = document.getElementById("count");
 const clockEl = document.getElementById("clock");
 const sourceEl = document.getElementById("source");
@@ -50,8 +51,13 @@ async function fetchQuote() {
           ? raw.author
           : "Unknown";
 
+    const tags = Array.isArray(raw.tags)
+      ? raw.tags.map((tag) => (tag && tag.name ? tag.name : tag)).filter(Boolean)
+      : [];
+    const category = tags.length ? String(tags[0]) : "";
+
     failures = 0;
-    return { text, author };
+    return { text, author, category };
   } catch (err) {
     failures += 1;
     if (failures >= 2) {
@@ -96,6 +102,14 @@ function show(quote) {
   lastText = quote.text;
   quoteEl.textContent = quote.text;
   authorEl.textContent = quote.author || "Unknown";
+
+  if (quote.category) {
+    categoryEl.textContent = quote.category;
+    categoryEl.hidden = false;
+  } else {
+    categoryEl.textContent = "";
+    categoryEl.hidden = true;
+  }
 
   if (quote.note) {
     noteEl.textContent = "(" + quote.note + ")";

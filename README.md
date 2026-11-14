@@ -31,6 +31,8 @@ To view it on a phone on the same network, use `http://<your-pc-ip>:5500` (the s
 
 Each click shows one quote. Quotes are fetched live from the Quotable API (a free, keyless mirror at `api.quotable.kurokeita.dev`); the next one is prefetched so a click feels instant.
 
+Every quote shows a category above it. Live quotes use the API's first tag (e.g. "Wisdom", "Friendship", "Famous Quotes"); bundled quotes use their section from the collection (e.g. "Money and wealth"). The two taxonomies are independent.
+
 If the API is unreachable — offline, blocked, or down — the site falls back to the 100 quotes bundled in `quotes.js`, and the footer label changes to "quotes from the bundled set". A quote is never repeated back-to-back.
 
 ## Attribution
