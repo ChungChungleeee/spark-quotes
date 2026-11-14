@@ -512,6 +512,14 @@ async function init() {
 
   document.querySelector(".sidebar-btn[title='Home']").addEventListener("click", closePanel);
 
+  // Profile → login, Log out → login
+  document.querySelector(".sidebar-btn[title='Profile']").addEventListener("click", () => {
+    window.location.href = "login.html";
+  });
+  document.querySelector(".sidebar-btn[title='Log out']").addEventListener("click", () => {
+    window.location.href = "login.html";
+  });
+
   // ── First quote ───────────────────────────────────────────
   const first = await takeQuote();
   lastText = first.text;
