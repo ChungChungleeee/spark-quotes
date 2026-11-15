@@ -569,29 +569,28 @@ async function init() {
     });
 
     const sorted = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    const ul = document.createElement("ul");
-    ul.className = "group-quotes";
+    const list = document.createElement("div");
+    list.className = "saved-list";
 
     sorted.forEach(([key, quotes]) => {
-      const li  = document.createElement("li");
-      const btn = document.createElement("button");
-      btn.type      = "button";
-      btn.className = "group-quote-btn group-list-item";
+      const card = document.createElement("button");
+      card.type      = "button";
+      card.className = "saved-card group-card";
+      card.addEventListener("click", () => showQuoteList(title, groupBy, key, quotes));
 
-      const label = document.createElement("span");
+      const label = document.createElement("p");
+      label.className  = "saved-card-text";
       label.textContent = key;
 
-      const count = document.createElement("span");
-      count.className  = "group-count";
+      const count = document.createElement("p");
+      count.className  = "saved-card-author";
       count.textContent = quotes.length + " quote" + (quotes.length !== 1 ? "s" : "");
 
-      btn.append(label, count);
-      btn.addEventListener("click", () => showQuoteList(title, groupBy, key, quotes));
-      li.append(btn);
-      ul.append(li);
+      card.append(label, count);
+      list.append(card);
     });
 
-    panelBody.append(ul);
+    panelBody.append(list);
     panelEl.hidden = false;
   }
 
@@ -603,18 +602,25 @@ async function init() {
     backBtn.hidden  = false;
     backBtn.onclick = () => showGroupList(parentTitle, groupBy);
 
-    const ul = document.createElement("ul");
-    ul.className = "group-quotes";
+    const ul = document.createElement("div");
+    ul.className = "saved-list";
 
     quotes.forEach(q => {
-      const li  = document.createElement("li");
-      const btn = document.createElement("button");
-      btn.type      = "button";
-      btn.className = "group-quote-btn";
-      btn.textContent = q.text;
-      btn.addEventListener("click", () => loadQuoteFromPanel(q));
-      li.append(btn);
-      ul.append(li);
+      const card = document.createElement("button");
+      card.type      = "button";
+      card.className = "saved-card";
+      card.addEventListener("click", () => loadQuoteFromPanel(q));
+
+      const text = document.createElement("p");
+      text.className  = "saved-card-text";
+      text.textContent = q.text;
+
+      const author = document.createElement("p");
+      author.className  = "saved-card-author";
+      author.textContent = "— " + (q.author || "Unknown");
+
+      card.append(text, author);
+      ul.append(card);
     });
 
     panelBody.append(ul);
