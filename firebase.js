@@ -10,6 +10,17 @@ import {
   updateProfile,
   sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  orderBy,
+  query,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAo8CImnPFjbMgHMd6vGUmpT0UePRrTJGA",
@@ -21,12 +32,14 @@ const firebaseConfig = {
   measurementId: "G-173HY5HFZ8",
 };
 
-const app = initializeApp(firebaseConfig);
+const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db   = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
 export {
   auth,
+  db,
   googleProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -35,4 +48,12 @@ export {
   signOut,
   updateProfile,
   sendPasswordResetEmail,
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  orderBy,
+  query,
 };

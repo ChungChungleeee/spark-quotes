@@ -1,13 +1,15 @@
-import { auth, onAuthStateChanged, signOut } from "./firebase.js";
+import {
+  auth, db, onAuthStateChanged, signOut,
+  doc, getDoc, setDoc, deleteDoc, collection, getDocs, query, orderBy,
+} from "./firebase.js";
 
-const API_URL = "https://api.quotable.kurokeita.dev/api/quotes/random?maxLength=180";
+const API_URL   = "https://api.quotable.kurokeita.dev/api/quotes/random?maxLength=180";
 const INDEX_URL = "quotes-index.json";
 
 // ── Auth guard ───────────────────────────────────────────────
 const heroEl = document.getElementById("hero");
 const appEl  = document.getElementById("app");
 
-// Keep both hidden until Firebase resolves the auth state
 heroEl.style.display = "none";
 appEl.hidden = true;
 
@@ -25,20 +27,74 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-const feedEl = document.getElementById("feed");
-const searchEl = document.getElementById("search");
+const feedEl    = document.getElementById("feed");
+const searchEl  = document.getElementById("search");
 const resultsEl = document.getElementById("results");
-const navUp = document.getElementById("nav-up");
-const navDown = document.getElementById("nav-down");
+const navUp     = document.getElementById("nav-up");
+const navDown   = document.getElementById("nav-down");
 
-// ── Quote fetching ──────────────────────────────────────────
+// ── Likes / Bookmarks (Firestore) ────────────────────────────
+// In-memory sets so we don't need to hit Firestore on every render
+const likedTexts    = new Set();
+const bookmarkedTexts = new Set();
 
-let useApi = true;
-let failures = 0;
-let nextQuote = null;
-let pending = null;
-let bag = [];
-let lastText = "";
+// quote key — use the text as a stable ID (trimmed, lowercased hash-safe string)
+function quoteKey(text) {
+  return btoa(encodeURIComponent(text.trim())).replace(/[+/=]/g, (c) =>
+    ({ "+": "-", "/": "_", "=": "" }[c])
+  ).slice(0, 100);
+}
+
+async function loadUserCollections() {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+
+  const [likeSnap, bookSnap] = await Promise.all([
+    getDocs(query(collection(db, "users", uid, "likes"),    orderBy("savedAt", "desc"))),
+    getDocs(query(collection(db, "users", uid, "bookmarks"), orderBy("savedAt", "desc"))),
+  ]);
+
+  likeSnap.docs.forEach(d     => likedTexts.add(d.data().text));
+  bookSnap.docs.forEach(d => bookmarkedTexts.add(d.data().text));
+}
+
+async function toggleLike(quote) {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+  const key = quoteKey(quote.text);
+  const ref = doc(db, "users", uid, "likes", key);
+
+  if (likedTexts.has(quote.text)) {
+    likedTexts.delete(quote.text);
+    await deleteDoc(ref);
+  } else {
+    likedTexts.add(quote.text);
+    await setDoc(ref, { text: quote.text, author: quote.author, category: quote.category || "", savedAt: Date.now() });
+  }
+}
+
+async function toggleBookmark(quote) {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+  const key = quoteKey(quote.text);
+  const ref = doc(db, "users", uid, "bookmarks", key);
+
+  if (bookmarkedTexts.has(quote.text)) {
+    bookmarkedTexts.delete(quote.text);
+    await deleteDoc(ref);
+  } else {
+    bookmarkedTexts.add(quote.text);
+    await setDoc(ref, { text: quote.text, author: quote.author, category: quote.category || "", savedAt: Date.now() });
+  }
+}
+
+// ── Quote fetching ───────────────────────────────────────────
+let useApi      = true;
+let failures    = 0;
+let nextQuote   = null;
+let pending     = null;
+let bag         = [];
+let lastText    = "";
 
 function shuffle(items) {
   const list = items.slice();
@@ -51,10 +107,10 @@ function shuffle(items) {
 
 async function fetchQuote() {
   try {
-    const res = await fetch(API_URL, { cache: "no-store" });
+    const res  = await fetch(API_URL, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    const raw = data.quote || (Array.isArray(data) ? data[0] : data);
+    const raw  = data.quote || (Array.isArray(data) ? data[0] : data);
     const text = raw && (raw.content || raw.text);
     if (!text) throw new Error("unexpected response");
 
@@ -102,10 +158,9 @@ async function takeQuote() {
   return takeFromBundle();
 }
 
-// ── Slide / feed ────────────────────────────────────────────
-
-const slides = [];   // array of { el, quote }
-let current = 0;     // index of active slide
+// ── Slide / feed ─────────────────────────────────────────────
+const slides = [];
+let current      = 0;
 let transitioning = false;
 
 function buildCard(quote) {
@@ -156,22 +211,26 @@ function buildCard(quote) {
     }
   });
 
+  // Like button — pre-fill state from in-memory set
   const likeBtn = document.createElement("button");
   likeBtn.type = "button";
-  likeBtn.className = "icon-btn";
+  likeBtn.className = "icon-btn" + (likedTexts.has(quote.text) ? " active" : "");
   likeBtn.setAttribute("aria-label", "Like");
   likeBtn.innerHTML = `<i data-lucide="heart"></i>`;
-  likeBtn.addEventListener("click", () => {
-    likeBtn.classList.toggle("active");
+  likeBtn.addEventListener("click", async () => {
+    await toggleLike(quote);
+    likeBtn.classList.toggle("active", likedTexts.has(quote.text));
   });
 
+  // Bookmark button — pre-fill state from in-memory set
   const bookmarkBtn = document.createElement("button");
   bookmarkBtn.type = "button";
-  bookmarkBtn.className = "icon-btn";
+  bookmarkBtn.className = "icon-btn" + (bookmarkedTexts.has(quote.text) ? " active" : "");
   bookmarkBtn.setAttribute("aria-label", "Bookmark");
   bookmarkBtn.innerHTML = `<i data-lucide="bookmark"></i>`;
-  bookmarkBtn.addEventListener("click", () => {
-    bookmarkBtn.classList.toggle("active");
+  bookmarkBtn.addEventListener("click", async () => {
+    await toggleBookmark(quote);
+    bookmarkBtn.classList.toggle("active", bookmarkedTexts.has(quote.text));
   });
 
   const iconGroup = document.createElement("div");
@@ -199,40 +258,31 @@ function updateNavButtons() {
 
 async function goTo(direction) {
   if (transitioning) return;
-
   if (direction === "up" && current === 0) return;
 
   transitioning = true;
 
   if (direction === "down") {
-    // fetch next quote and append a new slide below
-    const quote = await takeQuote();
-    lastText = quote.text;
+    const quote    = await takeQuote();
+    lastText       = quote.text;
     const newSlide = createSlide(quote, "below");
     slides.push(newSlide);
-
-    // force reflow so transition fires
     newSlide.el.getBoundingClientRect();
-
-    // move current up, new one into view
     slides[current].el.className = "slide above";
-    newSlide.el.className = "slide active";
+    newSlide.el.className        = "slide active";
     current = slides.length - 1;
     prefetch();
   } else {
-    // go back up
-    slides[current].el.className = "slide below";
+    slides[current].el.className     = "slide below";
     slides[current - 1].el.className = "slide active";
     current--;
   }
 
   updateNavButtons();
-
   setTimeout(() => { transitioning = false; }, 460);
 }
 
-// ── Keyboard navigation ──────────────────────────────────────
-
+// ── Keyboard navigation ───────────────────────────────────────
 document.addEventListener("keydown", (e) => {
   if (document.activeElement === searchEl) return;
   if (e.key === "ArrowDown") { e.preventDefault(); goTo("down"); }
@@ -240,33 +290,27 @@ document.addEventListener("keydown", (e) => {
 });
 
 navDown.addEventListener("click", () => goTo("down"));
-navUp.addEventListener("click", () => goTo("up"));
+navUp.addEventListener("click",   () => goTo("up"));
 
-// ── Touch / swipe ────────────────────────────────────────────
-
+// ── Touch / swipe ─────────────────────────────────────────────
 let touchStartY = 0;
-
-feedEl.addEventListener("touchstart", (e) => {
-  touchStartY = e.touches[0].clientY;
-}, { passive: true });
-
-feedEl.addEventListener("touchend", (e) => {
+feedEl.addEventListener("touchstart", (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+feedEl.addEventListener("touchend",   (e) => {
   const diff = touchStartY - e.changedTouches[0].clientY;
   if (Math.abs(diff) < 40) return;
   goTo(diff > 0 ? "down" : "up");
 }, { passive: true });
 
-// ── Search ───────────────────────────────────────────────────
-
+// ── Search ────────────────────────────────────────────────────
 const PAGE_SIZE = 20;
-let index = null;
+let index        = null;
 let indexPromise = null;
-let searchToken = 0;
-let matchList = [];
-let shown = 0;
+let searchToken  = 0;
+let matchList    = [];
+let shown        = 0;
 let resultsCountEl = null;
-let resultsListEl = null;
-let moreEl = null;
+let resultsListEl  = null;
+let moreEl         = null;
 
 function loadIndex() {
   if (index) return Promise.resolve(index);
@@ -280,8 +324,8 @@ function loadIndex() {
 
 function resultItem(entry) {
   const item = document.createElement("li");
-  const btn = document.createElement("button");
-  btn.type = "button";
+  const btn  = document.createElement("button");
+  btn.type      = "button";
   btn.className = "result";
 
   const text = document.createElement("span");
@@ -289,21 +333,19 @@ function resultItem(entry) {
   text.textContent = entry.text;
 
   const meta = document.createElement("span");
-  meta.className = "result-meta";
+  meta.className  = "result-meta";
   meta.textContent = entry.author + (entry.category ? " · " + entry.category : "");
 
   btn.append(text, meta);
   btn.addEventListener("click", () => {
-    // show selected quote as a new slide
     lastText = entry.text;
     const newSlide = createSlide(entry, "below");
     slides.push(newSlide);
     newSlide.el.getBoundingClientRect();
     slides[current].el.className = "slide above";
-    newSlide.el.className = "slide active";
+    newSlide.el.className        = "slide active";
     current = slides.length - 1;
     updateNavButtons();
-
     searchEl.value = "";
     resultsEl.hidden = true;
     resultsEl.textContent = "";
@@ -315,7 +357,7 @@ function resultItem(entry) {
 
 function updateResultsCount() {
   const total = matchList.length;
-  const noun = total === 1 ? "result" : "results";
+  const noun  = total === 1 ? "result" : "results";
   resultsCountEl.textContent =
     shown < total ? "showing " + shown + " of " + total + " " + noun : total + " " + noun;
 }
@@ -336,12 +378,12 @@ function appendResults() {
 
 function renderResults(found, query) {
   matchList = found;
-  shown = 0;
+  shown     = 0;
   resultsEl.textContent = "";
 
   if (!found.length) {
     const empty = document.createElement("p");
-    empty.className = "empty";
+    empty.className  = "empty";
     empty.textContent = "No quotes match \u201c" + query + "\u201d.";
     resultsEl.append(empty);
     return;
@@ -354,7 +396,7 @@ function renderResults(found, query) {
   resultsListEl.className = "results-list";
 
   moreEl = document.createElement("button");
-  moreEl.type = "button";
+  moreEl.type      = "button";
   moreEl.className = "more";
   moreEl.addEventListener("click", appendResults);
 
@@ -377,7 +419,7 @@ async function runSearch(raw) {
   resultsEl.textContent = "";
 
   const loading = document.createElement("p");
-  loading.className = "empty";
+  loading.className  = "empty";
   loading.textContent = "Searching…";
   resultsEl.append(loading);
 
@@ -393,12 +435,10 @@ async function runSearch(raw) {
 }
 
 let searchTimer = null;
-
 searchEl.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => runSearch(searchEl.value), 140);
 });
-
 searchEl.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     searchEl.value = "";
@@ -413,14 +453,15 @@ searchEl.addEventListener("keydown", (e) => {
 });
 
 // ── Boot ─────────────────────────────────────────────────────
-
 async function init() {
-  // Render Lucide icons
+  // Load user's saved quotes before rendering anything
+  await loadUserCollections();
+
   lucide.createIcons();
 
   // Dark mode toggle
   const themeToggle = document.getElementById("theme-toggle");
-  const html = document.documentElement;
+  const html        = document.documentElement;
   themeToggle.addEventListener("click", () => {
     const isDark = html.getAttribute("data-theme") === "dark";
     html.setAttribute("data-theme", isDark ? "light" : "dark");
@@ -428,7 +469,7 @@ async function init() {
     lucide.createIcons({ rootElement: themeToggle });
   });
 
-  // ── Panel (categories / authors) ──────────────────────────
+  // ── Panel ─────────────────────────────────────────────────
   const panelEl    = document.getElementById("panel");
   const panelTitle = document.getElementById("panel-title");
   const panelBody  = document.getElementById("panel-body");
@@ -449,16 +490,69 @@ async function init() {
     slides.push(newSlide);
     newSlide.el.getBoundingClientRect();
     slides[current].el.className = "slide above";
-    newSlide.el.className = "slide active";
+    newSlide.el.className        = "slide active";
     current = slides.length - 1;
     updateNavButtons();
     closePanel();
   }
 
-  // Level 1: show list of categories or authors
+  // ── Generic saved-quotes panel (likes / bookmarks) ────────
+  function showSavedPanel(title, savedSet) {
+    panelTitle.textContent = title;
+    panelBody.textContent  = "";
+    document.getElementById("panel-back").hidden = true;
+
+    if (savedSet.size === 0) {
+      const empty = document.createElement("p");
+      empty.className  = "empty";
+      empty.style.padding = "16px";
+      empty.textContent = "Nothing here yet. Tap the " +
+        (title === "Likes" ? "♥" : "🔖") + " on a quote to save it.";
+      panelBody.append(empty);
+      panelEl.hidden = false;
+      return;
+    }
+
+    // Retrieve full quote objects from the saved texts
+    const uid = currentUser.uid;
+    const colName = title === "Likes" ? "likes" : "bookmarks";
+
+    getDocs(query(collection(db, "users", uid, colName), orderBy("savedAt", "desc")))
+      .then((snap) => {
+        const ul = document.createElement("ul");
+        ul.className = "group-quotes";
+
+        snap.docs.forEach((d) => {
+          const q  = d.data();
+          const li = document.createElement("li");
+          const btn = document.createElement("button");
+          btn.type      = "button";
+          btn.className = "group-quote-btn";
+
+          const textSpan = document.createElement("span");
+          textSpan.className  = "result-quote";
+          textSpan.textContent = q.text;
+
+          const meta = document.createElement("span");
+          meta.className  = "result-meta";
+          meta.textContent = q.author + (q.category ? " · " + q.category : "");
+
+          btn.append(textSpan, meta);
+          btn.addEventListener("click", () => loadQuoteFromPanel(q));
+          li.append(btn);
+          ul.append(li);
+        });
+
+        panelBody.append(ul);
+      });
+
+    panelEl.hidden = false;
+  }
+
+  // ── Category / author panels ──────────────────────────────
   function showGroupList(title, groupBy) {
     panelTitle.textContent = title;
-    panelBody.textContent = "";
+    panelBody.textContent  = "";
     document.getElementById("panel-back").hidden = true;
 
     const map = new Map();
@@ -473,16 +567,16 @@ async function init() {
     ul.className = "group-quotes";
 
     sorted.forEach(([key, quotes]) => {
-      const li = document.createElement("li");
+      const li  = document.createElement("li");
       const btn = document.createElement("button");
-      btn.type = "button";
+      btn.type      = "button";
       btn.className = "group-quote-btn group-list-item";
 
       const label = document.createElement("span");
       label.textContent = key;
 
       const count = document.createElement("span");
-      count.className = "group-count";
+      count.className  = "group-count";
       count.textContent = quotes.length + " quote" + (quotes.length !== 1 ? "s" : "");
 
       btn.append(label, count);
@@ -495,22 +589,21 @@ async function init() {
     panelEl.hidden = false;
   }
 
-  // Level 2: show quotes inside a selected category or author
   function showQuoteList(parentTitle, groupBy, key, quotes) {
     panelTitle.textContent = key;
-    panelBody.textContent = "";
+    panelBody.textContent  = "";
 
-    const backBtn = document.getElementById("panel-back");
-    backBtn.hidden = false;
+    const backBtn   = document.getElementById("panel-back");
+    backBtn.hidden  = false;
     backBtn.onclick = () => showGroupList(parentTitle, groupBy);
 
     const ul = document.createElement("ul");
     ul.className = "group-quotes";
 
     quotes.forEach(q => {
-      const li = document.createElement("li");
+      const li  = document.createElement("li");
       const btn = document.createElement("button");
-      btn.type = "button";
+      btn.type      = "button";
       btn.className = "group-quote-btn";
       btn.textContent = q.text;
       btn.addEventListener("click", () => loadQuoteFromPanel(q));
@@ -521,27 +614,38 @@ async function init() {
     panelBody.append(ul);
   }
 
-  // Wire sidebar buttons
-  document.querySelector(".sidebar-btn[title='Categories']").addEventListener("click", () => {
+  // ── Sidebar wiring ────────────────────────────────────────
+  function activateBtn(title) {
     document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
-    document.querySelector(".sidebar-btn[title='Categories']").classList.add("active");
+    document.querySelector(`.sidebar-btn[title='${title}']`).classList.add("active");
+  }
+
+  document.querySelector(".sidebar-btn[title='Home']").addEventListener("click", closePanel);
+
+  document.querySelector(".sidebar-btn[title='Categories']").addEventListener("click", () => {
+    activateBtn("Categories");
     showGroupList("Categories", "category");
   });
 
   document.querySelector(".sidebar-btn[title='Authors']").addEventListener("click", () => {
-    document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
-    document.querySelector(".sidebar-btn[title='Authors']").classList.add("active");
+    activateBtn("Authors");
     showGroupList("Authors", "author");
   });
 
-  document.querySelector(".sidebar-btn[title='Home']").addEventListener("click", closePanel);
-
-  // Profile → show display name in console (can be expanded later)
-  document.querySelector(".sidebar-btn[title='Profile']").addEventListener("click", () => {
-    // placeholder – could open a profile panel
+  document.querySelector(".sidebar-btn[title='Likes']").addEventListener("click", () => {
+    activateBtn("Likes");
+    showSavedPanel("Likes", likedTexts);
   });
 
-  // Log out
+  document.querySelector(".sidebar-btn[title='Bookmarks']").addEventListener("click", () => {
+    activateBtn("Bookmarks");
+    showSavedPanel("Bookmarks", bookmarkedTexts);
+  });
+
+  document.querySelector(".sidebar-btn[title='Profile']").addEventListener("click", () => {
+    // placeholder
+  });
+
   document.querySelector(".sidebar-btn[title='Log out']").addEventListener("click", async () => {
     await signOut(auth);
     window.location.href = "index.html";
