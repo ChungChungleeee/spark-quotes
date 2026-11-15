@@ -21,6 +21,8 @@
       <h1 class="auth-title">Create an account</h1>
       <p class="auth-sub">Start your Spark journey</p>
 
+      <div class="auth-error" id="auth-error" hidden></div>
+
       <form class="auth-form" id="signup-form" novalidate>
 
         <div class="field">
@@ -57,11 +59,11 @@
           <span class="field-error" id="confirm-error"></span>
         </div>
 
-        <button type="submit" class="auth-btn">Create account</button>
+        <button type="submit" class="auth-btn" id="signup-btn">Create account</button>
 
         <div class="auth-divider"><span>or</span></div>
 
-        <button type="button" class="auth-btn auth-btn--outline google-btn">
+        <button type="button" class="auth-btn auth-btn--outline google-btn" id="google-btn">
           <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -80,12 +82,27 @@
 
   </div>
 
-  <script>
+  <script type="module">
+    import {
+      auth,
+      googleProvider,
+      onAuthStateChanged,
+      createUserWithEmailAndPassword,
+      signInWithPopup,
+      updateProfile,
+    } from "./firebase.js";
+
     lucide.createIcons();
 
+    // If already logged in, skip straight to the app
+    onAuthStateChanged(auth, (user) => {
+      if (user) window.location.href = "index.html";
+    });
+
+    // Password toggles
     function makeToggle(inputId, btnId) {
       const input = document.getElementById(inputId);
-      const btn = document.getElementById(btnId);
+      const btn   = document.getElementById(btnId);
       btn.addEventListener("click", () => {
         const isHidden = input.type === "password";
         input.type = isHidden ? "text" : "password";
@@ -94,17 +111,89 @@
       });
     }
     makeToggle("password", "toggle-pw");
-    makeToggle("confirm", "toggle-confirm");
+    makeToggle("confirm",  "toggle-confirm");
 
-    document.getElementById("signup-form").addEventListener("submit", (e) => {
+    // Error display
+    const errorBox = document.getElementById("auth-error");
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.hidden = false;
+    }
+    function clearError() {
+      errorBox.hidden = true;
+      errorBox.textContent = "";
+    }
+    function clearFieldErrors() {
+      ["name-error", "email-error", "password-error", "confirm-error"].forEach((id) => {
+        document.getElementById(id).textContent = "";
+      });
+    }
+
+    function friendlyError(code) {
+      switch (code) {
+        case "auth/email-already-in-use":
+          return "An account with this email already exists.";
+        case "auth/invalid-email":
+          return "That email address isn't valid.";
+        case "auth/weak-password":
+          return "Password must be at least 6 characters.";
+        default:
+          return "Something went wrong. Please try again.";
+      }
+    }
+
+    // Sign up
+    const signupBtn = document.getElementById("signup-btn");
+    document.getElementById("signup-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      sessionStorage.setItem("spark-authed", "1");
-      window.location.href = "index.html";
+      clearError();
+      clearFieldErrors();
+
+      const name     = document.getElementById("name").value.trim();
+      const email    = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const confirm  = document.getElementById("confirm").value;
+
+      let valid = true;
+      if (!name)     { document.getElementById("name-error").textContent = "Required"; valid = false; }
+      if (!email)    { document.getElementById("email-error").textContent = "Required"; valid = false; }
+      if (password.length < 8) {
+        document.getElementById("password-error").textContent = "At least 8 characters";
+        valid = false;
+      }
+      if (password !== confirm) {
+        document.getElementById("confirm-error").textContent = "Passwords don't match";
+        valid = false;
+      }
+      if (!valid) return;
+
+      signupBtn.disabled = true;
+      signupBtn.textContent = "Creating account…";
+
+      try {
+        const { user } = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(user, { displayName: name });
+        window.location.href = "index.html";
+      } catch (err) {
+        showError(friendlyError(err.code));
+        signupBtn.disabled = false;
+        signupBtn.textContent = "Create account";
+      }
+    });
+
+    // Google sign-up
+    document.getElementById("google-btn").addEventListener("click", async () => {
+      clearError();
+      try {
+        await signInWithPopup(auth, googleProvider);
+        window.location.href = "index.html";
+      } catch (err) {
+        if (err.code !== "auth/popup-closed-by-user") {
+          showError(friendlyError(err.code));
+        }
+      }
     });
   </script>
-
-</body>
-</html>
 
 </body>
 </html>

@@ -21,6 +21,8 @@
       <h1 class="auth-title">Welcome back</h1>
       <p class="auth-sub">Log in to your account</p>
 
+      <div class="auth-error" id="auth-error" hidden></div>
+
       <form class="auth-form" id="login-form" novalidate>
 
         <div class="field">
@@ -45,14 +47,14 @@
             <input type="checkbox" id="remember" />
             <span>Remember me</span>
           </label>
-          <a href="#" class="auth-link">Forgot password?</a>
+          <a href="#" class="auth-link" id="forgot-link">Forgot password?</a>
         </div>
 
-        <button type="submit" class="auth-btn">Log in</button>
+        <button type="submit" class="auth-btn" id="login-btn">Log in</button>
 
         <div class="auth-divider"><span>or</span></div>
 
-        <button type="button" class="auth-btn auth-btn--outline google-btn">
+        <button type="button" class="auth-btn auth-btn--outline google-btn" id="google-btn">
           <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -71,11 +73,25 @@
 
   </div>
 
-  <script>
+  <script type="module">
+    import {
+      auth,
+      googleProvider,
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      signInWithPopup,
+      sendPasswordResetEmail,
+    } from "./firebase.js";
+
     lucide.createIcons();
 
+    // If already logged in, skip straight to the app
+    onAuthStateChanged(auth, (user) => {
+      if (user) window.location.href = "index.html";
+    });
+
     // Password visibility toggle
-    const pwInput = document.getElementById("password");
+    const pwInput  = document.getElementById("password");
     const toggleBtn = document.getElementById("toggle-pw");
     toggleBtn.addEventListener("click", () => {
       const isHidden = pwInput.type === "password";
@@ -84,10 +100,85 @@
       lucide.createIcons({ rootElement: toggleBtn });
     });
 
-    document.getElementById("login-form").addEventListener("submit", (e) => {
+    // Error display
+    const errorBox = document.getElementById("auth-error");
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.hidden = false;
+    }
+    function clearError() {
+      errorBox.hidden = true;
+      errorBox.textContent = "";
+    }
+
+    function friendlyError(code) {
+      switch (code) {
+        case "auth/invalid-credential":
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+          return "Incorrect email or password.";
+        case "auth/too-many-requests":
+          return "Too many attempts. Try again later.";
+        case "auth/user-disabled":
+          return "This account has been disabled.";
+        default:
+          return "Something went wrong. Please try again.";
+      }
+    }
+
+    // Email / password login
+    const loginBtn = document.getElementById("login-btn");
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      sessionStorage.setItem("spark-authed", "1");
-      window.location.href = "index.html";
+      clearError();
+
+      const email    = document.getElementById("email").value.trim();
+      const password = pwInput.value;
+
+      if (!email)    { document.getElementById("email-error").textContent = "Required"; return; }
+      if (!password) { document.getElementById("password-error").textContent = "Required"; return; }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Logging in…";
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "index.html";
+      } catch (err) {
+        showError(friendlyError(err.code));
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Log in";
+      }
+    });
+
+    // Google login
+    document.getElementById("google-btn").addEventListener("click", async () => {
+      clearError();
+      try {
+        await signInWithPopup(auth, googleProvider);
+        window.location.href = "index.html";
+      } catch (err) {
+        if (err.code !== "auth/popup-closed-by-user") {
+          showError(friendlyError(err.code));
+        }
+      }
+    });
+
+    // Forgot password
+    document.getElementById("forgot-link").addEventListener("click", async (e) => {
+      e.preventDefault();
+      clearError();
+      const email = document.getElementById("email").value.trim();
+      if (!email) {
+        document.getElementById("email-error").textContent = "Enter your email above first.";
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showError("✓ Password reset email sent. Check your inbox.");
+      } catch (err) {
+        showError(friendlyError(err.code));
+      }
     });
   </script>
 

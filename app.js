@@ -1,18 +1,29 @@
+import { auth, onAuthStateChanged, signOut } from "./firebase.js";
+
 const API_URL = "https://api.quotable.kurokeita.dev/api/quotes/random?maxLength=180";
 const INDEX_URL = "quotes-index.json";
 
-// ── Hero / app visibility ────────────────────────────────────
-// Show the main app if the user arrived from login/signup,
-// otherwise show the hero landing page.
+// ── Auth guard ───────────────────────────────────────────────
 const heroEl = document.getElementById("hero");
 const appEl  = document.getElementById("app");
 
-if (sessionStorage.getItem("spark-authed")) {
-  heroEl.style.display = "none";
-  appEl.hidden = false;
-} else {
-  appEl.hidden = true;
-}
+// Keep both hidden until Firebase resolves the auth state
+heroEl.style.display = "none";
+appEl.hidden = true;
+
+let currentUser = null;
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  if (user) {
+    heroEl.style.display = "none";
+    appEl.hidden = false;
+    init();
+  } else {
+    appEl.hidden = true;
+    heroEl.style.display = "";
+  }
+});
 
 const feedEl = document.getElementById("feed");
 const searchEl = document.getElementById("search");
@@ -525,12 +536,14 @@ async function init() {
 
   document.querySelector(".sidebar-btn[title='Home']").addEventListener("click", closePanel);
 
-  // Profile → login, Log out → login
+  // Profile → show display name in console (can be expanded later)
   document.querySelector(".sidebar-btn[title='Profile']").addEventListener("click", () => {
-    window.location.href = "login.html";
+    // placeholder – could open a profile panel
   });
-  document.querySelector(".sidebar-btn[title='Log out']").addEventListener("click", () => {
-    sessionStorage.removeItem("spark-authed");
+
+  // Log out
+  document.querySelector(".sidebar-btn[title='Log out']").addEventListener("click", async () => {
+    await signOut(auth);
     window.location.href = "index.html";
   });
 
@@ -543,4 +556,4 @@ async function init() {
   prefetch();
 }
 
-init();
+// init() is called by onAuthStateChanged above when the user is signed in
