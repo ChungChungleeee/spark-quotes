@@ -519,31 +519,37 @@ async function init() {
 
     getDocs(query(collection(db, "users", uid, colName), orderBy("savedAt", "desc")))
       .then((snap) => {
-        const ul = document.createElement("ul");
-        ul.className = "group-quotes";
+        const list = document.createElement("div");
+        list.className = "saved-list";
 
         snap.docs.forEach((d) => {
-          const q  = d.data();
-          const li = document.createElement("li");
-          const btn = document.createElement("button");
-          btn.type      = "button";
-          btn.className = "group-quote-btn";
+          const q = d.data();
 
-          const textSpan = document.createElement("span");
-          textSpan.className  = "result-quote";
-          textSpan.textContent = q.text;
+          const card = document.createElement("button");
+          card.type      = "button";
+          card.className = "saved-card";
+          card.addEventListener("click", () => loadQuoteFromPanel(q));
 
-          const meta = document.createElement("span");
-          meta.className  = "result-meta";
-          meta.textContent = q.author + (q.category ? " · " + q.category : "");
+          if (q.category) {
+            const cat = document.createElement("span");
+            cat.className  = "saved-card-category";
+            cat.textContent = q.category;
+            card.append(cat);
+          }
 
-          btn.append(textSpan, meta);
-          btn.addEventListener("click", () => loadQuoteFromPanel(q));
-          li.append(btn);
-          ul.append(li);
+          const text = document.createElement("p");
+          text.className  = "saved-card-text";
+          text.textContent = q.text;
+
+          const author = document.createElement("p");
+          author.className  = "saved-card-author";
+          author.textContent = "— " + (q.author || "Unknown");
+
+          card.append(text, author);
+          list.append(card);
         });
 
-        panelBody.append(ul);
+        panelBody.append(list);
       });
 
     panelEl.hidden = false;
